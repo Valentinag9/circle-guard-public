@@ -38,8 +38,22 @@ pipeline {
                 // Despliegue de los 6 servicios
                 sh "kubectl apply -f k8s/prod/ -R"
                 sh "kubectl rollout status deployment/circleguard-auth-service -n ${NAMESPACE}"
-                // ... resto de servicios
+                sh "kubectl rollout status deployment/circleguard-gateway-service -n ${NAMESPACE}"
+                sh "kubectl rollout status deployment/circleguard-identity-service -n ${NAMESPACE}"
+                sh "kubectl rollout status deployment/circleguard-promotion-service -n ${NAMESPACE}"
+                sh "kubectl rollout status deployment/circleguard-form-service -n ${NAMESPACE}"
+                sh "kubectl rollout status deployment/circleguard-notification-service -n ${NAMESPACE}"
             }
         }
+
+        stage('Deploy to STAGE') {
+            steps {
+                withKubeConfig([credentialsId: 'kubeconfig-credentials']) {
+                    sh "kubectl apply -f k8s/${NAMESPACE}/${params.SERVICE}-deployment.yaml"
+                    sh "kubectl rollout restart deployment/${APP_NAME} -n ${NAMESPACE}"
+                }
+            }
+        }
+
     }
 }
