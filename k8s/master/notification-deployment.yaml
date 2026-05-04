@@ -1,0 +1,49 @@
+---
+# notification-service — MASTER (3 replicas, RollingUpdate)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: circleguard-master
+  labels: {app: notification-service, env: master}
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxUnavailable: 1, maxSurge: 1}
+  selector:
+    matchLabels: {app: notification-service}
+  template:
+    metadata:
+      labels: {app: notification-service, env: master}
+    spec:
+      containers:
+      - name: notification-service
+        image: circleguard/notification-service:latest
+        imagePullPolicy: Never
+        ports: [{containerPort: 8082}]
+        env:
+        - {name: SPRING_KAFKA_BOOTSTRAP_SERVERS, value: "kafka-svc.circleguard-master.svc.cluster.local:9092"}
+        - {name: SPRING_MAIL_HOST, value: "mailhog-svc.circleguard-master.svc.cluster.local"}
+        - {name: SPRING_MAIL_PORT, value: "1025"}
+        - {name: AUTH_API_URL, value: "http://auth-service-svc.circleguard-master.svc.cluster.local:8180"}
+        - name: JWT_SECRET
+          valueFrom: {secretKeyRef: {name: circleguard-secrets, key: JWT_SECRET}}
+        readinessProbe:
+          httpGet: {path: /actuator/health, port: 8082}
+          initialDelaySeconds: 40
+          periodSeconds: 10
+          failureThreshold: 3
+        resources:
+          requests: {memory: "512Mi", cpu: "400m"}
+          limits: {memory: "1Gi", cpu: "800m"}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service-svc
+  namespace: circleguard-master
+spec:
+  selector: {app: notification-service}
+  ports: [{port: 8082, targetPort: 8082, nodePort: 32082}]
+  type: NodePort

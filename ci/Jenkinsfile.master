@@ -1,0 +1,45 @@
+pipeline {
+    agent any
+    
+    environment {
+        DOCKER_REGISTRY = "circleguard-registry"
+        NAMESPACE = "prod"
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps { checkout scm }
+        }
+        
+        stage('Full System Build') {
+            steps {
+                sh "./gradlew build -x test"
+            }
+        }
+        
+        stage('Unit & Integration Tests') {
+            steps {
+                sh "./gradlew test"
+            }
+        }
+        
+        stage('Release Notes') {
+            steps {
+                script {
+                    def logs = sh(script: "git log --oneline -n 10", returnStdout: true).trim()
+                    writeFile file: 'RELEASE_NOTES.md', text: "# Release Notes\n\n${logs}"
+                    archiveArtifacts artifacts: 'RELEASE_NOTES.md'
+                }
+            }
+        }
+        
+        stage('Deploy to PROD') {
+            steps {
+                // Despliegue de los 6 servicios
+                sh "kubectl apply -f k8s/prod/ -R"
+                sh "kubectl rollout status deployment/circleguard-auth-service -n ${NAMESPACE}"
+                // ... resto de servicios
+            }
+        }
+    }
+}

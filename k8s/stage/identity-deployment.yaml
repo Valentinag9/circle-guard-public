@@ -1,0 +1,52 @@
+---
+# identity-service — STAGE
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: identity-service
+  namespace: circleguard-stage
+  labels: {app: identity-service, env: stage}
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app: identity-service}
+  template:
+    metadata:
+      labels: {app: identity-service, env: stage}
+    spec:
+      containers:
+      - name: identity-service
+        image: circleguard/identity-service:stage-latest
+        imagePullPolicy: Never
+        ports: [{containerPort: 8083}]
+        env:
+        - {name: SPRING_DATASOURCE_URL, value: "jdbc:postgresql://postgres-svc.circleguard-stage.svc.cluster.local:5432/circleguard_identity"}
+        - {name: SPRING_DATASOURCE_USERNAME, value: admin}
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom: {secretKeyRef: {name: circleguard-secrets, key: POSTGRES_PASSWORD}}
+        - name: JWT_SECRET
+          valueFrom: {secretKeyRef: {name: circleguard-secrets, key: JWT_SECRET}}
+        - name: VAULT_SECRET
+          valueFrom: {secretKeyRef: {name: circleguard-secrets, key: VAULT_SECRET}}
+        - name: VAULT_SALT
+          valueFrom: {secretKeyRef: {name: circleguard-secrets, key: VAULT_SALT}}
+        - name: VAULT_HASH_SALT
+          valueFrom: {secretKeyRef: {name: circleguard-secrets, key: VAULT_HASH_SALT}}
+        - {name: SPRING_KAFKA_BOOTSTRAP_SERVERS, value: "kafka-svc.circleguard-stage.svc.cluster.local:9092"}
+        readinessProbe:
+          httpGet: {path: /actuator/health, port: 8083}
+          initialDelaySeconds: 40
+          periodSeconds: 10
+        resources:
+          requests: {memory: "384Mi", cpu: "300m"}
+          limits: {memory: "768Mi", cpu: "700m"}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: identity-service-svc
+  namespace: circleguard-stage
+spec:
+  selector: {app: identity-service}
+  ports: [{port: 8083, targetPort: 8083, nodePort: 31083}]
+  type: NodePort

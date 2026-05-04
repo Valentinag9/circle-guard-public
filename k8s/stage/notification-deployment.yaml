@@ -1,0 +1,45 @@
+---
+# notification-service — STAGE
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: circleguard-stage
+  labels: {app: notification-service, env: stage}
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app: notification-service}
+  template:
+    metadata:
+      labels: {app: notification-service, env: stage}
+    spec:
+      containers:
+      - name: notification-service
+        image: circleguard/notification-service:stage-latest
+        imagePullPolicy: Never
+        ports: [{containerPort: 8082}]
+        env:
+        - {name: SPRING_KAFKA_BOOTSTRAP_SERVERS, value: "kafka-svc.circleguard-stage.svc.cluster.local:9092"}
+        - {name: SPRING_MAIL_HOST, value: "mailhog-svc.circleguard-stage.svc.cluster.local"}
+        - {name: SPRING_MAIL_PORT, value: "1025"}
+        - {name: AUTH_API_URL, value: "http://auth-service-svc.circleguard-stage.svc.cluster.local:8180"}
+        - name: JWT_SECRET
+          valueFrom: {secretKeyRef: {name: circleguard-secrets, key: JWT_SECRET}}
+        readinessProbe:
+          httpGet: {path: /actuator/health, port: 8082}
+          initialDelaySeconds: 40
+          periodSeconds: 10
+        resources:
+          requests: {memory: "384Mi", cpu: "300m"}
+          limits: {memory: "768Mi", cpu: "700m"}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service-svc
+  namespace: circleguard-stage
+spec:
+  selector: {app: notification-service}
+  ports: [{port: 8082, targetPort: 8082, nodePort: 31082}]
+  type: NodePort

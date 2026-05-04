@@ -1,0 +1,50 @@
+---
+# form-service — MASTER (3 replicas, RollingUpdate)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: form-service
+  namespace: circleguard-master
+  labels: {app: form-service, env: master}
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxUnavailable: 1, maxSurge: 1}
+  selector:
+    matchLabels: {app: form-service}
+  template:
+    metadata:
+      labels: {app: form-service, env: master}
+    spec:
+      containers:
+      - name: form-service
+        image: circleguard/form-service:latest
+        imagePullPolicy: Never
+        ports: [{containerPort: 8086}]
+        env:
+        - {name: SPRING_DATASOURCE_URL, value: "jdbc:postgresql://postgres-svc.circleguard-master.svc.cluster.local:5432/circleguard_form"}
+        - {name: SPRING_DATASOURCE_USERNAME, value: admin}
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom: {secretKeyRef: {name: circleguard-secrets, key: POSTGRES_PASSWORD}}
+        - {name: SPRING_KAFKA_BOOTSTRAP_SERVERS, value: "kafka-svc.circleguard-master.svc.cluster.local:9092"}
+        - name: JWT_SECRET
+          valueFrom: {secretKeyRef: {name: circleguard-secrets, key: JWT_SECRET}}
+        readinessProbe:
+          httpGet: {path: /actuator/health, port: 8086}
+          initialDelaySeconds: 40
+          periodSeconds: 10
+          failureThreshold: 3
+        resources:
+          requests: {memory: "512Mi", cpu: "400m"}
+          limits: {memory: "1Gi", cpu: "800m"}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: form-service-svc
+  namespace: circleguard-master
+spec:
+  selector: {app: form-service}
+  ports: [{port: 8086, targetPort: 8086, nodePort: 32086}]
+  type: NodePort

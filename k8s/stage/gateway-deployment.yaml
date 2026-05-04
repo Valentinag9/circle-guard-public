@@ -1,0 +1,45 @@
+---
+# gateway-service — STAGE
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway-service
+  namespace: circleguard-stage
+  labels: {app: gateway-service, env: stage}
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app: gateway-service}
+  template:
+    metadata:
+      labels: {app: gateway-service, env: stage}
+    spec:
+      containers:
+      - name: gateway-service
+        image: circleguard/gateway-service:stage-latest
+        imagePullPolicy: Never
+        ports: [{containerPort: 8087}]
+        env:
+        - {name: SPRING_DATA_REDIS_HOST, value: "redis-svc.circleguard-stage.svc.cluster.local"}
+        - {name: SPRING_DATA_REDIS_PORT, value: "6379"}
+        - name: JWT_SECRET
+          valueFrom: {secretKeyRef: {name: circleguard-secrets, key: JWT_SECRET}}
+        - name: QR_SECRET
+          valueFrom: {secretKeyRef: {name: circleguard-secrets, key: QR_SECRET}}
+        readinessProbe:
+          httpGet: {path: /actuator/health, port: 8087}
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        resources:
+          requests: {memory: "256Mi", cpu: "200m"}
+          limits: {memory: "512Mi", cpu: "500m"}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway-service-svc
+  namespace: circleguard-stage
+spec:
+  selector: {app: gateway-service}
+  ports: [{port: 8087, targetPort: 8087, nodePort: 31087}]
+  type: NodePort

@@ -1,0 +1,44 @@
+// Generic Jenkinsfile for CircleGuard Microservices - DEV
+def call(Map config) {
+    pipeline {
+        agent any
+        environment {
+            SERVICE   = config.serviceName
+            IMAGE     = "circleguard/${config.serviceName}"
+            TAG       = "${env.BUILD_NUMBER}"
+            NAMESPACE = 'circleguard-dev'
+            NODE_PORT = config.nodePort
+        }
+        stages {
+            stage('Checkout') {
+                steps { checkout scm }
+            }
+            stage('Build') {
+                steps { sh "./gradlew :services:${SERVICE}:build -x test --no-daemon" }
+            }
+            stage('Unit Tests') {
+                steps { sh "./gradlew :services:${SERVICE}:test --no-daemon" }
+                post {
+                    always {
+                        junit allowEmptyResults: true, testResults: "services/${SERVICE}/build/test-results/test/*.xml"
+                    }
+                }
+            }
+            stage('Docker Build') {
+                steps {
+                    sh "docker build -t ${IMAGE}:${TAG} -t ${IMAGE}:dev-latest -f services/${SERVICE}/Dockerfile ."
+                }
+            }
+            stage('Deploy DEV') {
+                steps {
+                    sh """
+                        kubectl apply -f k8s/dev/${SERVICE.replace('circleguard-','')}-deployment.yaml -n ${NAMESPACE}
+                        kubectl set image deployment/${SERVICE.replace('circleguard-','')} ${SERVICE.replace('circleguard-','')}=${IMAGE}:${TAG} -n ${NAMESPACE}
+                        kubectl rollout status deployment/${SERVICE.replace('circleguard-','')} -n ${NAMESPACE} --timeout=120s
+                    """
+                }
+            }
+        }
+    }
+}
+return this

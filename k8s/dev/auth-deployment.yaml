@@ -1,0 +1,90 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  auth-service — DEV Deployment & Service
+# ═══════════════════════════════════════════════════════════════════════════
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: circleguard-dev
+  labels:
+    app: auth-service
+    env: dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+        env: dev
+    spec:
+      containers:
+      - name: auth-service
+        image: circleguard/auth-service:latest
+        imagePullPolicy: Never        # usa imagen local de Minikube
+        ports:
+        - containerPort: 8180
+        env:
+        - name: SPRING_DATASOURCE_URL
+          value: "jdbc:postgresql://postgres-svc.circleguard-dev.svc.cluster.local:5432/circleguard_auth"
+        - name: SPRING_DATASOURCE_USERNAME
+          value: "admin"
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: circleguard-secrets
+              key: POSTGRES_PASSWORD
+        - name: SPRING_LDAP_URLS
+          value: "ldap://openldap-svc.circleguard-dev.svc.cluster.local:389"
+        - name: SPRING_LDAP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: circleguard-secrets
+              key: LDAP_PASSWORD
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: circleguard-secrets
+              key: JWT_SECRET
+        - name: QR_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: circleguard-secrets
+              key: QR_SECRET
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8180
+          initialDelaySeconds: 40
+          periodSeconds: 10
+          failureThreshold: 5
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8180
+          initialDelaySeconds: 60
+          periodSeconds: 20
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service-svc
+  namespace: circleguard-dev
+spec:
+  selector:
+    app: auth-service
+  ports:
+  - name: http
+    port: 8180
+    targetPort: 8180
+    nodePort: 30180
+  type: NodePort
