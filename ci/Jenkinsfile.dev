@@ -45,9 +45,15 @@ pipeline {
         
         stage('Deploy to DEV') {
             steps {
-                withCredentials([file(credentialsId: 'kubeconfig-credentials', variable: 'KUBECONFIG_FILE')]) {
-                    sh "export KUBECONFIG=${KUBECONFIG_FILE} && kubectl apply -f k8s/${NAMESPACE}/${params.SERVICE}-deployment.yaml"
-                    sh "export KUBECONFIG=${KUBECONFIG_FILE} && kubectl rollout restart deployment/${APP_NAME} -n ${NAMESPACE}"
+                withCredentials([file(credentialsId: 'kubeconfig-id', variable: 'KUBECONFIG_FILE')]) {
+                    sh '''
+                        export KUBECONFIG=$KUBECONFIG_FILE
+                        kubectl apply -f k8s/dev/gateway-service-deployment.yaml
+                    '''
+                    sh '''
+                        export KUBECONFIG=$KUBECONFIG_FILE
+                        kubectl rollout restart deployment/$APP_NAME -n $NAMESPACE
+                    '''
                 }
             }
         }
