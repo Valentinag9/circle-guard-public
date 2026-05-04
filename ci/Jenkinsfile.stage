@@ -29,7 +29,7 @@ pipeline {
             }
         }
         
-        stage('Deploy to DEV') {
+        stage('Deploy to STAGE') {
             steps {
                 withKubeConfig([credentialsId: 'kubeconfig-credentials']) {
                     sh "kubectl apply -f k8s/${NAMESPACE}/${params.SERVICE}-deployment.yaml"

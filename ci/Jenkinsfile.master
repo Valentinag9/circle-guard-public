@@ -46,7 +46,7 @@ pipeline {
             }
         }
 
-        stage('Deploy to STAGE') {
+        stage('Deploy to MASTER') {
             steps {
                 withKubeConfig([credentialsId: 'kubeconfig-credentials']) {
                     sh "kubectl apply -f k8s/${NAMESPACE}/${params.SERVICE}-deployment.yaml"
