@@ -1,0 +1,65 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  dashboard-service — DEV Deployment & Service
+# ═══════════════════════════════════════════════════════════════════════════
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard-service
+  namespace: circleguard-dev
+  labels:
+    app: dashboard-service
+    env: dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dashboard-service
+  template:
+    metadata:
+      labels:
+        app: dashboard-service
+        env: dev
+    spec:
+      containers:
+      - name: dashboard-service
+        image: circleguard/dashboard-service:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8084
+        env:
+        - name: AUTH_API_URL
+          value: "http://auth-service-svc.circleguard-dev.svc.cluster.local:8180"
+        - name: IDENTITY_API_URL
+          value: "http://identity-service-svc.circleguard-dev.svc.cluster.local:8083"
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: circleguard-secrets
+              key: JWT_SECRET
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8084
+          initialDelaySeconds: 40
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8084
+          initialDelaySeconds: 60
+          periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard-service-svc
+  namespace: circleguard-dev
+spec:
+  selector:
+    app: dashboard-service
+  ports:
+  - name: http
+    port: 8084
+    targetPort: 8084
+    nodePort: 30084
+  type: NodePort

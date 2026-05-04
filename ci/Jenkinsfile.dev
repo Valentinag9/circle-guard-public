@@ -1,0 +1,53 @@
+pipeline {
+    agent any
+    
+    parameters {
+        choice(name: 'SERVICE', 
+               choices: ['auth-service', 'gateway-service', 'identity-service', 'promotion-service', 'form-service', 'notification-service'], 
+               description: 'Microservicio a desplegar')
+    }
+    
+    environment {
+        DOCKER_REGISTRY = "circleguard-registry"
+        APP_NAME = "circleguard-${params.SERVICE}"
+        NAMESPACE = "dev"
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        
+        stage('Build & Unit Tests') {
+            steps {
+                sh "./gradlew :services:circleguard-${params.SERVICE}:build"
+            }
+        }
+        
+        stage('Docker Build') {
+            steps {
+                script {
+                    sh "docker build -t ${DOCKER_REGISTRY}/${APP_NAME}:${env.BUILD_ID} -f services/circleguard-${params.SERVICE}/Dockerfile ."
+                }
+            }
+        }
+        
+        stage('Docker Push') {
+            steps {
+                script {
+                    // Simulación de push (requeriría login en entorno real)
+                    sh "echo 'Pushing image ${DOCKER_REGISTRY}/${APP_NAME}:${env.BUILD_ID}'"
+                }
+            }
+        }
+        
+        stage('Deploy to DEV') {
+            steps {
+                sh "kubectl apply -f k8s/${NAMESPACE}/${params.SERVICE}-deployment.yaml"
+                sh "kubectl rollout restart deployment/${APP_NAME} -n ${NAMESPACE}"
+            }
+        }
+    }
+}

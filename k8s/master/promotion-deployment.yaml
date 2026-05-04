@@ -1,0 +1,59 @@
+---
+# promotion-service — MASTER (3 replicas, RollingUpdate)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: promotion-service
+  namespace: circleguard-master
+  labels: {app: promotion-service, env: master}
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxUnavailable: 1, maxSurge: 1}
+  selector:
+    matchLabels: {app: promotion-service}
+  template:
+    metadata:
+      labels: {app: promotion-service, env: master}
+    spec:
+      containers:
+      - name: promotion-service
+        image: circleguard/promotion-service:latest
+        imagePullPolicy: Never
+        ports: [{containerPort: 8088}]
+        env:
+        - {name: SPRING_DATASOURCE_URL, value: "jdbc:postgresql://postgres-svc.circleguard-master.svc.cluster.local:5432/circleguard_promotion"}
+        - {name: SPRING_DATASOURCE_USERNAME, value: admin}
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom: {secretKeyRef: {name: circleguard-secrets, key: POSTGRES_PASSWORD}}
+        - {name: SPRING_NEO4J_URI, value: "bolt://neo4j-svc.circleguard-master.svc.cluster.local:7687"}
+        - name: SPRING_NEO4J_AUTHENTICATION_PASSWORD
+          valueFrom: {secretKeyRef: {name: circleguard-secrets, key: NEO4J_PASSWORD}}
+        - {name: SPRING_KAFKA_BOOTSTRAP_SERVERS, value: "kafka-svc.circleguard-master.svc.cluster.local:9092"}
+        - {name: SPRING_DATA_REDIS_HOST, value: "redis-svc.circleguard-master.svc.cluster.local"}
+        - name: JWT_SECRET
+          valueFrom: {secretKeyRef: {name: circleguard-secrets, key: JWT_SECRET}}
+        readinessProbe:
+          httpGet: {path: /actuator/health, port: 8088}
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          failureThreshold: 5
+        livenessProbe:
+          httpGet: {path: /actuator/health, port: 8088}
+          initialDelaySeconds: 90
+          periodSeconds: 20
+          failureThreshold: 3
+        resources:
+          requests: {memory: "768Mi", cpu: "600m"}
+          limits: {memory: "1.5Gi", cpu: "1200m"}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: promotion-service-svc
+  namespace: circleguard-master
+spec:
+  selector: {app: promotion-service}
+  ports: [{port: 8088, targetPort: 8088, nodePort: 32088}]
+  type: NodePort

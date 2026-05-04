@@ -1,0 +1,46 @@
+---
+# form-service — STAGE
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: form-service
+  namespace: circleguard-stage
+  labels: {app: form-service, env: stage}
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app: form-service}
+  template:
+    metadata:
+      labels: {app: form-service, env: stage}
+    spec:
+      containers:
+      - name: form-service
+        image: circleguard/form-service:stage-latest
+        imagePullPolicy: Never
+        ports: [{containerPort: 8086}]
+        env:
+        - {name: SPRING_DATASOURCE_URL, value: "jdbc:postgresql://postgres-svc.circleguard-stage.svc.cluster.local:5432/circleguard_form"}
+        - {name: SPRING_DATASOURCE_USERNAME, value: admin}
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom: {secretKeyRef: {name: circleguard-secrets, key: POSTGRES_PASSWORD}}
+        - {name: SPRING_KAFKA_BOOTSTRAP_SERVERS, value: "kafka-svc.circleguard-stage.svc.cluster.local:9092"}
+        - name: JWT_SECRET
+          valueFrom: {secretKeyRef: {name: circleguard-secrets, key: JWT_SECRET}}
+        readinessProbe:
+          httpGet: {path: /actuator/health, port: 8086}
+          initialDelaySeconds: 40
+          periodSeconds: 10
+        resources:
+          requests: {memory: "384Mi", cpu: "300m"}
+          limits: {memory: "768Mi", cpu: "700m"}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: form-service-svc
+  namespace: circleguard-stage
+spec:
+  selector: {app: form-service}
+  ports: [{port: 8086, targetPort: 8086, nodePort: 31086}]
+  type: NodePort

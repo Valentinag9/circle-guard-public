@@ -1,0 +1,38 @@
+pipeline {
+    agent any
+    environment {
+        SERVICE   = 'circleguard-auth-service'
+        IMAGE     = 'circleguard/auth-service'
+        TAG       = "${env.BUILD_NUMBER}"
+        NAMESPACE = 'circleguard-dev'
+    }
+    stages {
+        stage('Checkout') {
+            steps { checkout scm }
+        }
+        stage('Build & Unit Tests') {
+            steps {
+                sh './gradlew :services:circleguard-auth-service:build --no-daemon'
+            }
+            post {
+                always {
+                    junit 'services/circleguard-auth-service/build/test-results/test/*.xml'
+                }
+            }
+        }
+        stage('Docker Build') {
+            steps {
+                sh "docker build -t ${IMAGE}:${TAG} -t ${IMAGE}:dev-latest -f services/circleguard-auth-service/Dockerfile ."
+            }
+        }
+        stage('Deploy DEV') {
+            steps {
+                sh """
+                    kubectl apply -f k8s/dev/auth-deployment.yaml -n ${NAMESPACE}
+                    kubectl set image deployment/auth-service auth-service=${IMAGE}:${TAG} -n ${NAMESPACE}
+                    kubectl rollout status deployment/auth-service -n ${NAMESPACE} --timeout=120s
+                """
+            }
+        }
+    }
+}

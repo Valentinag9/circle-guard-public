@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: circleguard-gateway-service
+  namespace: stage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gateway-service
+  template:
+    metadata:
+      labels:
+        app: gateway-service
+    spec:
+      containers:
+      - name: gateway-service
+        image: circleguard-registry/circleguard-gateway-service:stage
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway-service
+  namespace: stage
+spec:
+  selector:
+    app: gateway-service
+  ports:
+  - port: 80
+    targetPort: 8080
+

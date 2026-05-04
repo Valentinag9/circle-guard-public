@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: circleguard-form-service
+  namespace: stage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: form-service
+  template:
+    metadata:
+      labels:
+        app: form-service
+    spec:
+      containers:
+      - name: form-service
+        image: circleguard-registry/circleguard-form-service:stage
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: form-service
+  namespace: stage
+spec:
+  selector:
+    app: form-service
+  ports:
+  - port: 80
+    targetPort: 8080
+

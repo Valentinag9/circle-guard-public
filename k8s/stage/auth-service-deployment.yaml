@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: circleguard-auth-service
+  namespace: stage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      containers:
+      - name: auth-service
+        image: circleguard-registry/circleguard-auth-service:stage
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: dev
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: stage
+spec:
+  selector:
+    app: auth-service
+  ports:
+  - port: 80
+    targetPort: 8080
+
