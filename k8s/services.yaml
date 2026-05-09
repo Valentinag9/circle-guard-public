@@ -1,0 +1,215 @@
+# Auth Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: circleguard-auth-service
+spec:
+  selector:
+    matchLabels:
+      app: circleguard-auth-service
+  template:
+    metadata:
+      labels:
+        app: circleguard-auth-service
+    spec:
+      containers:
+      - name: auth
+        image: circleguard-auth-service:local
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8180
+        envFrom:
+        - configMapRef:
+            name: circleguard-config
+        - secretRef:
+            name: circleguard-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: circleguard-auth-service
+spec:
+  selector:
+    app: circleguard-auth-service
+  ports:
+  - port: 8180
+---
+# Identity Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: circleguard-identity-service
+spec:
+  selector:
+    matchLabels:
+      app: circleguard-identity-service
+  template:
+    metadata:
+      labels:
+        app: circleguard-identity-service
+    spec:
+      containers:
+      - name: identity
+        image: circleguard-identity-service:local
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8083
+        envFrom:
+        - configMapRef:
+            name: circleguard-config
+        - secretRef:
+            name: circleguard-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: circleguard-identity-service
+spec:
+  selector:
+    app: circleguard-identity-service
+  ports:
+  - port: 8083
+---
+# Form Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: circleguard-form-service
+spec:
+  selector:
+    matchLabels:
+      app: circleguard-form-service
+  template:
+    metadata:
+      labels:
+        app: circleguard-form-service
+    spec:
+      containers:
+      - name: form
+        image: circleguard-form-service:local
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8086
+        envFrom:
+        - configMapRef:
+            name: circleguard-config
+        - secretRef:
+            name: circleguard-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: circleguard-form-service
+spec:
+  selector:
+    app: circleguard-form-service
+  ports:
+  - port: 8086
+---
+# Promotion Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: circleguard-promotion-service
+spec:
+  selector:
+    matchLabels:
+      app: circleguard-promotion-service
+  template:
+    metadata:
+      labels:
+        app: circleguard-promotion-service
+    spec:
+      containers:
+      - name: promotion
+        image: circleguard-promotion-service:local
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8088
+        envFrom:
+        - configMapRef:
+            name: circleguard-config
+        - secretRef:
+            name: circleguard-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: circleguard-promotion-service
+spec:
+  selector:
+    app: circleguard-promotion-service
+  ports:
+  - port: 8088
+---
+# Notification Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: circleguard-notification-service
+spec:
+  selector:
+    matchLabels:
+      app: circleguard-notification-service
+  template:
+    metadata:
+      labels:
+        app: circleguard-notification-service
+    spec:
+      containers:
+      - name: notification
+        image: circleguard-notification-service:local
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8082
+        envFrom:
+        - configMapRef:
+            name: circleguard-config
+        - secretRef:
+            name: circleguard-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: circleguard-notification-service
+spec:
+  selector:
+    app: circleguard-notification-service
+  ports:
+  - port: 8082
+---
+# Gateway Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: circleguard-gateway-service
+spec:
+  selector:
+    matchLabels:
+      app: circleguard-gateway-service
+  template:
+    metadata:
+      labels:
+        app: circleguard-gateway-service
+    spec:
+      containers:
+      - name: gateway
+        image: circleguard-gateway-service:local
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8087
+        envFrom:
+        - configMapRef:
+            name: circleguard-config
+        - secretRef:
+            name: circleguard-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: circleguard-gateway-service
+spec:
+  selector:
+    app: circleguard-gateway-service
+  ports:
+  - port: 8087

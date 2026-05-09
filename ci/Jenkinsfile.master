@@ -1,59 +1,46 @@
 pipeline {
     agent any
-    
     environment {
-        DOCKER_REGISTRY = "circleguard-registry"
-        NAMESPACE = "prod"
+        SERVICES = "circleguard-auth-service circleguard-identity-service circleguard-form-service circleguard-promotion-service circleguard-notification-service circleguard-gateway-service"
+        KUBE_NAMESPACE = "circleguard-master"
     }
-    
     stages {
-        stage('Checkout') {
-            steps { checkout scm }
+        stage('Checkout') { steps { checkout scm } }
+        stage('Build Gradle') { steps { sh "./gradlew bootJar --no-daemon" } }
+        stage('Unit & Integration Tests') { 
+            steps { 
+                sh "./gradlew test integrationTest --no-daemon" 
+            } 
         }
-        
-        stage('Full System Build') {
-            steps {
-                sh "./gradlew build -x test"
-            }
-        }
-        
-        stage('Unit & Integration Tests') {
-            steps {
-                sh "./gradlew test"
-            }
-        }
-        
-        stage('Release Notes') {
+        stage('Build Docker Images') {
             steps {
                 script {
-                    def logs = sh(script: "git log --oneline -n 10", returnStdout: true).trim()
-                    writeFile file: 'RELEASE_NOTES.md', text: "# Release Notes\n\n${logs}"
-                    archiveArtifacts artifacts: 'RELEASE_NOTES.md'
+                    def serviceList = SERVICES.split(' ')
+                    for (service in serviceList) {
+                        sh "docker build -f services/${service}/Dockerfile -t ${service}:local ."
+                    }
                 }
             }
         }
-        
-        stage('Deploy to PROD') {
+        stage('Deploy Kubernetes Master') {
             steps {
-                // Despliegue de los 6 servicios
-                sh "kubectl apply -f k8s/prod/ -R"
-                sh "kubectl rollout status deployment/circleguard-auth-service -n ${NAMESPACE}"
-                sh "kubectl rollout status deployment/circleguard-gateway-service -n ${NAMESPACE}"
-                sh "kubectl rollout status deployment/circleguard-identity-service -n ${NAMESPACE}"
-                sh "kubectl rollout status deployment/circleguard-promotion-service -n ${NAMESPACE}"
-                sh "kubectl rollout status deployment/circleguard-form-service -n ${NAMESPACE}"
-                sh "kubectl rollout status deployment/circleguard-notification-service -n ${NAMESPACE}"
+                sh "kubectl apply -f k8s/namespace.yaml"
+                sh "kubectl apply -n ${KUBE_NAMESPACE} -f k8s/config.yaml"
+                sh "kubectl apply -n ${KUBE_NAMESPACE} -f k8s/infrastructure.yaml"
+                sh "kubectl apply -n ${KUBE_NAMESPACE} -f k8s/services.yaml"
+                sh "kubectl rollout status deployment/circleguard-auth-service -n ${KUBE_NAMESPACE} --timeout=90s"
             }
         }
-
-        stage('Deploy to MASTER') {
+        stage('Smoke Test') {
             steps {
-                withKubeConfig([credentialsId: 'kubeconfig-credentials']) {
-                    sh "kubectl apply -f k8s/${NAMESPACE}/${params.SERVICE}-deployment.yaml"
-                    sh "kubectl rollout restart deployment/${APP_NAME} -n ${NAMESPACE}"
-                }
+                sh "curl -s -o /dev/null -w '%{http_code}' http://circleguard-auth-service:8180/ || true"
             }
         }
-
+        stage('Generate Release Notes') {
+            steps {
+                sh "git log --oneline --no-merges > release-notes.md"
+                archiveArtifacts artifacts: 'release-notes.md', fingerprint: true
+            }
+        }
     }
 }

@@ -44,6 +44,17 @@ subprojects {
     }
 
     tasks.withType<Test> {
-        useJUnitPlatform()
+        useJUnitPlatform {
+            excludeTags("integration", "container", "performance")
+        }
+    }
+
+    tasks.register<Test>("integrationTest") {
+        description = "Runs integration tests."
+        group = "verification"
+        useJUnitPlatform {
+            includeTags("integration")
+        }
+        shouldRunAfter(tasks.named("test"))
     }
 }

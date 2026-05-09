@@ -1,47 +1,40 @@
 pipeline {
     agent any
-    
-    parameters {
-        choice(name: 'SERVICE', 
-               choices: ['auth-service', 'gateway-service', 'identity-service', 'promotion-service', 'form-service', 'notification-service'], 
-               description: 'Microservicio a desplegar en STAGE')
-    }
-    
     environment {
-        DOCKER_REGISTRY = "circleguard-registry"
-        APP_NAME = "circleguard-${params.SERVICE}"
-        NAMESPACE = "stage"
+        SERVICES = "circleguard-auth-service circleguard-identity-service circleguard-form-service circleguard-promotion-service circleguard-notification-service circleguard-gateway-service"
+        KUBE_NAMESPACE = "circleguard-stage"
     }
-    
     stages {
-        stage('Checkout') {
-            steps { checkout scm }
-        }
-        
-        stage('Build') {
-            steps { sh "./gradlew :services:circleguard-${params.SERVICE}:build -x test" }
-        }
-        
-        stage('Docker Build & Push') {
+        stage('Checkout') { steps { checkout scm } }
+        stage('Build Gradle') { steps { sh "./gradlew bootJar --no-daemon" } }
+        stage('Unit Tests') { steps { sh "./gradlew test --no-daemon" } }
+        stage('Integration Tests') {
             steps {
-                sh "docker build -t ${DOCKER_REGISTRY}/${APP_NAME}:stage -f services/circleguard-${params.SERVICE}/Dockerfile ."
-                sh "echo 'Pushing image to stage registry...'"
+                sh "./gradlew integrationTest --no-daemon"
             }
         }
-        
-        stage('Deploy to STAGE') {
+        stage('Build Docker Images') {
             steps {
-                withKubeConfig([credentialsId: 'kubeconfig-credentials']) {
-                    sh "kubectl apply -f k8s/${NAMESPACE}/${params.SERVICE}-deployment.yaml"
-                    sh "kubectl rollout restart deployment/${APP_NAME} -n ${NAMESPACE}"
+                script {
+                    def serviceList = SERVICES.split(' ')
+                    for (service in serviceList) {
+                        sh "docker build -f services/${service}/Dockerfile -t ${service}:local ."
+                    }
                 }
             }
         }
-
-        
-        stage('Integration Tests') {
+        stage('Deploy Kubernetes Stage') {
             steps {
-                sh "./gradlew :services:circleguard-${params.SERVICE}:test"
+                sh "kubectl apply -f k8s/namespace.yaml"
+                sh "kubectl apply -n ${KUBE_NAMESPACE} -f k8s/config.yaml"
+                sh "kubectl apply -n ${KUBE_NAMESPACE} -f k8s/infrastructure.yaml"
+                sh "kubectl apply -n ${KUBE_NAMESPACE} -f k8s/services.yaml"
+                sh "kubectl rollout status deployment/circleguard-auth-service -n ${KUBE_NAMESPACE} --timeout=90s"
+            }
+        }
+        stage('Smoke Test') {
+            steps {
+                sh "curl -s -o /dev/null -w '%{http_code}' http://circleguard-auth-service:8180/ || true"
             }
         }
     }
