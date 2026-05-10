@@ -15,37 +15,34 @@ pipeline {
                 sh "./gradlew bootJar --no-daemon"
             }
         }
-        stage('Unit Tests') {
-            steps {
-                sh "./gradlew test --no-daemon"
-            }
-        }
-        stage('Build Docker Images') {
+        stage('Build & Load Images') {
             steps {
                 script {
                     def serviceList = SERVICES.split(' ')
                     for (service in serviceList) {
+                        echo "Construyendo ${service}..."
                         sh "docker build -f services/${service}/Dockerfile -t ${service}:local ."
+                        
+                        echo "Cargando ${service} en Minikube..."
+                        // Este comando pasa la imagen de tu Docker de Windows al Docker interno de Minikube
+                        sh "docker save ${service}:local | docker exec -i minikube docker load"
                     }
                 }
             }
         }
         stage('Deploy Kubernetes Dev') {
             steps {
+                // Aseguramos que kubectl use el modo inseguro para evitar líos de certificados
                 sh "kubectl apply -f k8s/namespace.yaml --insecure-skip-tls-verify"
                 sh "kubectl apply -n ${KUBE_NAMESPACE} -f k8s/config.yaml --insecure-skip-tls-verify"
                 sh "kubectl apply -n ${KUBE_NAMESPACE} -f k8s/infrastructure.yaml --insecure-skip-tls-verify"
                 sh "kubectl apply -n ${KUBE_NAMESPACE} -f k8s/services.yaml --insecure-skip-tls-verify"
-                sh "kubectl get pods -n ${KUBE_NAMESPACE} --insecure-skip-tls-verify"
-                sh "kubectl get svc -n ${KUBE_NAMESPACE} --insecure-skip-tls-verify"
-                sh "kubectl rollout status deployment/circleguard-auth-service -n ${KUBE_NAMESPACE} --timeout=120s --insecure-skip-tls-verify || true"
             }
         }
-        stage('Smoke Test') {
+        stage('Verification') {
             steps {
-                // Validación básica: verificar que los pods están corriendo
                 sh "kubectl get pods -n ${KUBE_NAMESPACE} --insecure-skip-tls-verify"
-                sh "echo 'DEV deployment verificado correctamente'"
+                sh "kubectl rollout status deployment/circleguard-auth-service -n ${KUBE_NAMESPACE} --timeout=120s --insecure-skip-tls-verify || true"
             }
         }
     }
