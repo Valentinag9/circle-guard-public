@@ -23,6 +23,9 @@ spec:
             name: circleguard-config
         - secretRef:
             name: circleguard-secret
+        env:
+        - name: SPRING_DATASOURCE_URL
+          value: jdbc:postgresql://postgres:5432/circleguard_auth
 ---
 apiVersion: v1
 kind: Service
@@ -59,6 +62,9 @@ spec:
             name: circleguard-config
         - secretRef:
             name: circleguard-secret
+        env:
+        - name: SPRING_DATASOURCE_URL
+          value: jdbc:postgresql://postgres:5432/circleguard_identity
 ---
 apiVersion: v1
 kind: Service
@@ -95,6 +101,9 @@ spec:
             name: circleguard-config
         - secretRef:
             name: circleguard-secret
+        env:
+        - name: SPRING_DATASOURCE_URL
+          value: jdbc:postgresql://postgres:5432/circleguard_form
 ---
 apiVersion: v1
 kind: Service
@@ -131,6 +140,9 @@ spec:
             name: circleguard-config
         - secretRef:
             name: circleguard-secret
+        env:
+        - name: SPRING_NEO4J_URI
+          value: bolt://neo4j:7687
 ---
 apiVersion: v1
 kind: Service
