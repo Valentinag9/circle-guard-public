@@ -1,4 +1,15 @@
 # PostgreSQL
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-script
+data:
+  init.sql: |
+    CREATE DATABASE circleguard_auth;
+    CREATE DATABASE circleguard_identity;
+    CREATE DATABASE circleguard_form;
+    CREATE DATABASE circleguard_promotion;
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -24,6 +35,13 @@ spec:
           value: "password"
         ports:
         - containerPort: 5432
+        volumeMounts:
+        - name: init-script
+          mountPath: /docker-entrypoint-initdb.d
+      volumes:
+      - name: init-script
+        configMap:
+          name: postgres-init-script
 ---
 apiVersion: v1
 kind: Service
@@ -157,7 +175,6 @@ spec:
       containers:
       - name: neo4j
         image: neo4j:5.26
-        env:
         env:
         - name: NEO4J_AUTH
           value: "neo4j/password"
