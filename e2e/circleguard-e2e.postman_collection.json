@@ -7,9 +7,31 @@
 	"item": [
 		{
 			"name": "Visitor Handoff",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
 			"request": {
 				"method": "POST",
-				"header": [],
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"anonymousId\": \"550e8400-e29b-41d4-a716-446655440000\"}"
+				},
 				"url": {
 					"raw": "http://localhost:8180/api/v1/auth/visitor/handoff",
 					"protocol": "http",
@@ -30,6 +52,19 @@
 		},
 		{
 			"name": "Get Active Questionnaire",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 or 404 (if no active questionnaire)\", function () {",
+							"    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
 			"request": {
 				"method": "GET",
 				"header": [],
@@ -52,6 +87,19 @@
 		},
 		{
 			"name": "Submit Survey",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
 			"request": {
 				"method": "POST",
 				"header": [
@@ -62,7 +110,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\"anonymousId\": \"hash123\", \"responses\": []}"
+					"raw": "{\"anonymousId\": \"550e8400-e29b-41d4-a716-446655440000\", \"responses\": {}}"
 				},
 				"url": {
 					"raw": "http://localhost:8086/api/v1/surveys",
@@ -82,6 +130,19 @@
 		},
 		{
 			"name": "Validate Gateway",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
 			"request": {
 				"method": "POST",
 				"header": [

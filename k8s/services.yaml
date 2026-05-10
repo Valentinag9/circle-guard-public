@@ -143,6 +143,8 @@ spec:
         env:
         - name: SPRING_NEO4J_URI
           value: bolt://neo4j:7687
+        - name: SPRING_DATASOURCE_URL
+          value: jdbc:postgresql://postgres:5432/circleguard_promotion
 ---
 apiVersion: v1
 kind: Service
