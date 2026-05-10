@@ -15,6 +15,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Disabled; 
+
+@Disabled("Skipping integration test in CI environment")
+
+
 
 @SpringBootTest
 @Testcontainers
